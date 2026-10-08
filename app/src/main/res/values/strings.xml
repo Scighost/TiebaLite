@@ -95,6 +95,8 @@
     <string name="toast_like_success">关注成功，你是第 %s 个关注本吧的</string>
     <string name="tab_forum_latest">最新</string>
     <string name="tab_forum_good">精华</string>
+    <string name="title_block_forum_tabs">屏蔽分区</string>
+    <string name="tip_block_forum_tabs">勾选的分区内的帖子将不会显示在「最新」中</string>
     <string name="tip_good">精</string>
     <string name="button_no">否</string>
     <string name="button_yes">是</string>

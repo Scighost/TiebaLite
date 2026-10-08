@@ -7,6 +7,8 @@ import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,6 +31,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.Checkbox
+import androidx.compose.material.Divider
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.FloatingActionButton
@@ -130,6 +135,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberMenuState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.AccountUtil.LocalAccount
+import com.huanchengfly.tieba.post.utils.ForumTabFilter
 import com.huanchengfly.tieba.post.utils.HistoryUtil
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
 import com.huanchengfly.tieba.post.utils.TiebaUtil
@@ -502,6 +508,8 @@ fun ForumPage(
     }
 
     val unlikeDialogState = rememberDialogState()
+    val tabFilterDialogState = rememberDialogState()
+    var selectedBlockedTabs by remember { mutableStateOf(emptySet<Int>()) }
 
     LaunchedEffect(forumInfo) {
         if (forumInfo != null && !context.appPreferences.incognitoMode) {
@@ -536,6 +544,61 @@ fun ForumPage(
                 )
             }
         )
+    }
+
+    if (generalTabs.isNotEmpty()) {
+        ConfirmDialog(
+            dialogState = tabFilterDialogState,
+            onConfirm = {
+                coroutineScope.launch {
+                    ForumTabFilter.setBlockedTabs(forumName, selectedBlockedTabs)
+                    emitGlobalEvent(
+                        ForumThreadListUiEvent.Refresh(
+                            isGood = false,
+                            sortType = getSortType(context, forumName)
+                        )
+                    )
+                }
+            },
+            title = {
+                Text(text = stringResource(id = R.string.title_block_forum_tabs))
+            },
+        ) {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 400.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    text = stringResource(id = R.string.tip_block_forum_tabs),
+                    style = MaterialTheme.typography.caption,
+                    color = ExtendedTheme.colors.textSecondary,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                generalTabs.forEach { tab ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .debounceClickable(
+                                onClick = {
+                                    selectedBlockedTabs = if (tab.tabId in selectedBlockedTabs) {
+                                        selectedBlockedTabs - tab.tabId
+                                    } else {
+                                        selectedBlockedTabs + tab.tabId
+                                    }
+                                }
+                            )
+                    ) {
+                        Checkbox(
+                            checked = tab.tabId in selectedBlockedTabs,
+                            onCheckedChange = null,
+                        )
+                        Text(text = tab.tabName)
+                    }
+                }
+            }
+        }
     }
 
     onGlobalEvent<GlobalEvent.AddThreadSuccess>() {
@@ -923,6 +986,21 @@ fun ForumPage(
                                                 dismiss()
                                             }
                                         )
+                                        if (generalTabs.isNotEmpty()) {
+                                            Divider()
+                                            DropdownMenuItem(
+                                                onClick = {
+                                                    selectedBlockedTabs =
+                                                        ForumTabFilter.getBlockedTabs(forumName)
+                                                    tabFilterDialogState.show()
+                                                    dismiss()
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.title_block_forum_tabs)
+                                                )
+                                            }
+                                        }
                                     },
                                     selectedContentColor = ExtendedTheme.colors.primary,
                                     unselectedContentColor = ExtendedTheme.colors.textSecondary
